@@ -1,0 +1,36 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h1 class="h4 mb-0">Prediccion de evento cardiaco</h1>
+        <p class="text-muted small mb-0">Ingrese las 6 caracteristicas que requiere el modelo SVM.</p>
+      </div>
+      <div class="card-body">
+        {% if error %}
+          <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+        {% if result %}
+          <div class="alert alert-info" role="alert">
+            <strong>Prediccion:</strong>
+            {{ '1 - vive' if result.prediction == 1 else '0 - muere' }}
+            {% if result.probability is not none %}<br><small>Probabilidad estimada: {{ '%.2f'|format(result.probability * 100) }}%</small>{% endif %}
+          </div>
+        {% endif %}
+        <form method="post" class="row g-3">
+          {% for field in feature_order %}
+          <div class="col-md-6">
+            <label class="form-label text-capitalize" for="{{ field }}">{{ field.replace('_', ' ') }}</label>
+            <input type="number" step="any" class="form-control" id="{{ field }}" name="{{ field }}" required>
+          </div>
+          {% endfor %}
+          <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary">Predecir</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
