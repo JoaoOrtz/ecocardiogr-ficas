@@ -1,36 +1,42 @@
 ﻿import os
 import numpy as np
+import pandas as pd
 import joblib
 from pathlib import Path
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "best_svm_model.joblib"
-SCALER_PATH = BASE_DIR / "scaler (2).pkl"
+MODEL_PATH = BASE_DIR / "best_pipeline.joblib"
+FEATURES_PATH = BASE_DIR / "feature_names.pkl"
 
-# Expected feature order used by the SVM model
-FEATURE_ORDER = [
-    "age_at_heart_attack",
-    "fractional_shortening",
-    "epss",
-    "lvdd",
-    "wall_motion_index",
-    "pericardial_effusion",
-]
+print("\n=== LOADING PREDICTOR.PY ===")
+print("Model path:", MODEL_PATH)
+print("Feature names path:", FEATURES_PATH)
 
+# Load pipeline (scaler + modelo)
 try:
-    _model = joblib.load(MODEL_PATH)
+    _pipeline = joblib.load(MODEL_PATH)
+    print("✔ Pipeline cargado correctamente.")
 except Exception as exc:
-    raise RuntimeError(f"Could not load model from {MODEL_PATH}: {exc}")
+    raise RuntimeError(f"❌ No se pudo cargar el pipeline desde {MODEL_PATH}: {exc}")
 
+# Load correct feature order
 try:
-    _scaler = joblib.load(SCALER_PATH)
+    FEATURE_ORDER = joblib.load(FEATURES_PATH)
+    print("✔ FEATURES:", FEATURE_ORDER)
 except Exception as exc:
-    raise RuntimeError(f"Could not load scaler from {SCALER_PATH}: {exc}")
+    raise RuntimeError(f"❌ No se pudo cargar feature_names.pkl: {exc}")
+
+print("=== PREDICTOR CARGADO COMPLETAMENTE ===\n")
 
 
 def predict_from_dict(values_dict):
-    """Return prediction and probability from a dict of feature values."""
+    """
+    Recibe un dict con las 6 características del ecocardiograma.
+    Usa el PIPELINE (scaler + modelo) y devuelve predicción + probabilidad.
+    """
+
+    # Convert input dict → ordered list
     try:
         values = [float(values_dict[name]) for name in FEATURE_ORDER]
     except KeyError as missing:
@@ -38,24 +44,23 @@ def predict_from_dict(values_dict):
     except ValueError:
         raise ValueError("All fields must be numeric")
 
-    X = np.array(values, dtype=float).reshape(1, -1)
+    # Convert to DataFrame with correct columns
+    X = pd.DataFrame([values], columns=FEATURE_ORDER)
+
+    # Predict directly using pipeline
     try:
-        # Only apply scaler if it expects the same number of features
-        if hasattr(_scaler, "n_features_in_") and _scaler.n_features_in_ != X.shape[1]:
-            # Fall back to raw values when the scaler was trained with a different shape
-            X_scaled = X
-        else:
-            X_scaled = _scaler.transform(X)
-    except Exception as exc:
-        raise ValueError(f"Error applying scaler: {exc}")
+        pred = int(_pipeline.predict(X)[0])
 
-    pred = _model.predict(X_scaled)[0]
-
-    proba = None
-    if hasattr(_model, "predict_proba"):
+        # Probability (si el modelo lo permite)
         try:
-            proba = float(_model.predict_proba(X_scaled)[0][1])
-        except Exception:
+            proba = float(_pipeline.predict_proba(X)[0][1])
+        except:
             proba = None
 
-    return {"prediction": int(pred), "probability": proba}
+        return {
+            "prediction": pred,
+            "probability": proba
+        }
+
+    except Exception as exc:
+        raise ValueError(f"Error during prediction: {exc}")
