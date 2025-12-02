@@ -20,7 +20,7 @@
             {{ '1 - El paciente sobrevivirá' if result.prediction == 1 else '0 - El paciente no sobrevivirá' }}
 
             {% if result.probability is not none %}
-              <br><small>Probabilidad estimada: {{ '%.2f'|format(result.probability * 100) }}%</small>
+              <br>
             {% endif %}
           </div>
         {% endif %}
